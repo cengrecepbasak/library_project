@@ -1,6 +1,7 @@
 # library.py
 import json
 import os
+import httpx
 from book import Book
 
 class Library:
@@ -10,7 +11,6 @@ class Library:
         self.load_books()
 
     def load_books(self):
-        """library.json dosyasından kitapları yükler."""
         if os.path.exists(self.filename):
             with open(self.filename, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -19,23 +19,45 @@ class Library:
             self.books = []
 
     def save_books(self):
-        """Kitap listesini library.json dosyasına kaydeder."""
         with open(self.filename, "w", encoding="utf-8") as f:
             json.dump([book.to_dict() for book in self.books], f, ensure_ascii=False, indent=4)
 
-    def add_book(self, book: Book):
-        """Yeni bir Book nesnesini ekler."""
-        if self.find_book(book.isbn):
+    def add_book(self, isbn: str):
+        """ISBN ile Open Library API'den kitap ekler."""
+        if self.find_book(isbn):
             print("Bu ISBN'e sahip bir kitap zaten var.")
             return None
 
-        self.books.append(book)
-        self.save_books()
-        print("Kitap başarıyla eklendi.")
-        return book
+        url = f"https://openlibrary.org/isbn/{isbn}.json"
+        try:
+            response = httpx.get(url, timeout=5)
+            if response.status_code != 200:
+                print("Kitap bulunamadı.")
+                return None
+
+            data = response.json()
+            title = data.get("title", "Bilinmeyen Başlık")
+
+            authors = []
+            for author in data.get("authors", []):
+                author_url = f"https://openlibrary.org{author['key']}.json"
+                author_res = httpx.get(author_url, timeout=5)
+                if author_res.status_code == 200:
+                    authors.append(author_res.json().get("name", "Bilinmeyen Yazar"))
+
+            author_str = ", ".join(authors) if authors else "Bilinmeyen Yazar"
+
+            book = Book(title, author_str, isbn)
+            self.books.append(book)
+            self.save_books()
+            print("Kitap başarıyla eklendi.")
+            return book
+
+        except httpx.RequestError:
+            print("İnternet bağlantısı yok veya API'ye ulaşılamıyor.")
+            return None
 
     def remove_book(self, isbn: str):
-        """ISBN ile kitabı siler."""
         book = self.find_book(isbn)
         if book:
             self.books.remove(book)
@@ -45,7 +67,6 @@ class Library:
             print("Kitap bulunamadı.")
 
     def list_books(self):
-        """Tüm kitapları listeler."""
         if not self.books:
             print("Kütüphane boş.")
             return
@@ -53,7 +74,6 @@ class Library:
             print(book)
 
     def find_book(self, isbn: str):
-        """ISBN ile kitabı bulur."""
         for book in self.books:
             if book.isbn == isbn:
                 return book
