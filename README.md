@@ -23,10 +23,20 @@ Projeyi bilgisayarınıza klonlayın:
 git clone https://github.com/cengrecepbasak/library_project.git
 cd library_project
 
+Sanal Ortam (Opsiyonel ama tavsiye edilir)
+python -m venv venv
+.\venv\Scripts\activate       # Windows
+source venv/bin/activate      # Mac/Linux
+
 
 Gerekli bağımlılıkları yükleyin:
 
 pip install -r requirements.txt
+
+
+Eğer FastAPI veya httpx yüklü değilse ayrı yükleyebilirsiniz:
+
+pip install fastapi uvicorn httpx
 
 💻 Kullanım
 1. Terminal Uygulaması (Aşama 1 & 2)
